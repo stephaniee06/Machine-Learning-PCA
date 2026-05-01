@@ -1,0 +1,100 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 70vh;
+  height: 75vh;
+  max-height: 900px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--textMuted);
+  font-size: 0.95rem;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.legend {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--textMuted);
+  z-index: 10;
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.axisLabels {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  font-size: 0.7rem;
+  color: var(--textMuted);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.axisX { color: #e86c6c; margin-right: 0.5rem; }
+.axisY { color: #6bcf7f; margin-right: 0.5rem; }
+.axisZ { color: #7c9eff; }
+
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  max-width: 240px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.tooltipRow {
+  margin-bottom: 0.25rem;
+}
+
+.tooltipRow:last-of-type {
+  margin-bottom: 0;
+}
+
+.tooltipNormal { color: var(--normal); }
+.tooltipAnomaly { color: var(--anomaly); }
+
+.tooltipFeatures {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.tooltipFeatures ul {
+  margin: 0.25rem 0 0 0;
+  padding-left: 1.2rem;
+}
