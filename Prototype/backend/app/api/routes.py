@@ -1,5 +1,4 @@
 import io
-
 import pandas as pd
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -20,11 +19,11 @@ from app.services import (
 
 router = APIRouter(prefix="/api", tags=["pca-anomaly"])
 
-# In-memory store for the last uploaded dataset (for demo; use Redis/DB in production)
+# In-memory store (Catatan: Ini akan terhapus jika Render melakukan restart/spin down)
 _current_df = None
 _current_feature_columns: list[str] = []
 _current_label_column: str | None = None
-_current_labels: list[int] | None = None  # 0=normal, 1=anomaly from last run
+_current_labels: list[int] | None = None 
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -33,7 +32,6 @@ async def upload_csv(
     label_column: str | None = Form(None),
     encoding: str = Form("utf-8"),
 ):
-    """Upload a CSV file. Optionally specify which column is the label (0=normal, 1=anomaly)."""
     global _current_df, _current_feature_columns, _current_label_column
 
     if not file.filename or not file.filename.lower().endswith(".csv"):
@@ -67,7 +65,7 @@ async def upload_csv(
     _current_df = result.df
     _current_feature_columns = result.feature_columns
     _current_label_column = result.label_column
-    _current_labels = None  # reset until next run
+    _current_labels = None 
 
     return UploadResponse(
         success=True,
@@ -77,13 +75,8 @@ async def upload_csv(
         label_column=result.label_column,
     )
 
-
 @router.post("/run", response_model=RunResponse)
 async def run_anomaly_detection(body: RunRequest | None = None):
-    """
-    Run PCA anomaly detection on the last uploaded CSV.
-    Returns 3D points (first 3 PCs), labels (normal/anomaly), and per-row feature contributions.
-    """
     global _current_df, _current_feature_columns, _current_label_column, _current_labels
 
     if _current_df is None or not _current_feature_columns:
@@ -93,7 +86,7 @@ async def run_anomaly_detection(body: RunRequest | None = None):
         )
 
     opts = body or RunRequest()
-    n_components_arg = opts.n_components  # None = auto
+    n_components_arg = opts.n_components 
     if n_components_arg is not None:
         n_components_arg = min(
             n_components_arg,
@@ -110,7 +103,6 @@ async def run_anomaly_detection(body: RunRequest | None = None):
     )
     n_components_used = result.n_components_used
 
-    # Build per-row details with top contributing features
     details = get_feature_contributions(
         df=_current_df,
         feature_columns=_current_feature_columns,
@@ -120,7 +112,6 @@ async def run_anomaly_detection(body: RunRequest | None = None):
         top_k=5,
     )
 
-    # Include details for all rows so frontend can show table; for large data consider returning only anomalies
     anomaly_details = [
         AnomalyRowDetail(
             row_index=d["row_index"],
@@ -146,58 +137,34 @@ async def run_anomaly_detection(body: RunRequest | None = None):
         anomaly_details=anomaly_details,
     )
 
-
 @router.get("/download/cleaned")
 async def download_cleaned_csv():
-    """
-    Download a CSV of the original dataset with anomaly rows removed (normal rows only).
-    Requires a prior upload and run.
-    """
     global _current_df, _current_labels
-
     if _current_df is None or _current_labels is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Upload a CSV and run PCA first.",
-        )
-    if len(_current_labels) != len(_current_df):
-        raise HTTPException(status_code=500, detail="Data and labels length mismatch.")
-
+        raise HTTPException(status_code=400, detail="Upload a CSV and run PCA first.")
+    
     mask = [l == 0 for l in _current_labels]
     cleaned = _current_df.loc[mask]
     buf = io.StringIO()
     cleaned.to_csv(buf, index=False)
-    buf.seek(0)
     return StreamingResponse(
-        iter([buf.getvalue()]),
+        io.BytesIO(buf.getvalue().encode()),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=cleaned_normal_only.csv"},
     )
 
-
 @router.get("/download/anomalies")
 async def download_anomalies_csv():
-    """
-    Download a CSV containing only the rows classified as anomalies.
-    Requires a prior upload and run.
-    """
     global _current_df, _current_labels
-
     if _current_df is None or _current_labels is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Upload a CSV and run PCA first.",
-        )
-    if len(_current_labels) != len(_current_df):
-        raise HTTPException(status_code=500, detail="Data and labels length mismatch.")
-
+        raise HTTPException(status_code=400, detail="Upload a CSV and run PCA first.")
+    
     mask = [l == 1 for l in _current_labels]
     anomalies = _current_df.loc[mask]
     buf = io.StringIO()
     anomalies.to_csv(buf, index=False)
-    buf.seek(0)
     return StreamingResponse(
-        iter([buf.getvalue()]),
+        io.BytesIO(buf.getvalue().encode()),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=anomalies_only.csv"},
     )

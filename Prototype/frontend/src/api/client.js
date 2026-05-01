@@ -1,15 +1,21 @@
-const API_BASE = '/api';
+// GANTI baris pertama dengan URL Render kamu yang sudah aktif
+const API_BASE = 'https://machine-learning-pca-backend.onrender.com/api';
 
+/**
+ * Upload CSV file to the backend on Render.
+ */
 export async function uploadCsv(file, labelColumn = null, encoding = 'utf-8') {
   const form = new FormData();
   form.append('file', file);
   if (labelColumn) form.append('label_column', labelColumn);
   form.append('encoding', encoding);
 
+  // Sekarang fetch akan menembak ke: https://machine-learning-pca-backend.onrender.com/api/upload
   const res = await fetch(`${API_BASE}/upload`, {
     method: 'POST',
     body: form,
   });
+  
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Upload failed');
@@ -17,21 +23,27 @@ export async function uploadCsv(file, labelColumn = null, encoding = 'utf-8') {
   return res.json();
 }
 
+/**
+ * Run PCA anomaly detection.
+ */
 export async function runAnomalyDetection(options = {}) {
   const { n_components = 3, threshold_percentile = 95 } = options;
   const body = {
     threshold_percentile: Number(threshold_percentile),
   };
+  
   if (n_components === 'auto' || n_components === null || n_components === undefined) {
     body.n_components = null;
   } else {
     body.n_components = Number(n_components);
   }
+
   const res = await fetch(`${API_BASE}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Run failed');
@@ -41,7 +53,6 @@ export async function runAnomalyDetection(options = {}) {
 
 /**
  * Download CSV of the dataset with anomaly rows removed (normal rows only).
- * Triggers a file download in the browser.
  */
 export async function downloadCleanedCsv() {
   const res = await fetch(`${API_BASE}/download/cleaned`);
@@ -60,7 +71,6 @@ export async function downloadCleanedCsv() {
 
 /**
  * Download CSV containing only the rows classified as anomalies.
- * Triggers a file download in the browser.
  */
 export async function downloadAnomaliesCsv() {
   const res = await fetch(`${API_BASE}/download/anomalies`);
