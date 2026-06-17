@@ -146,3 +146,116 @@
   color: var(--anomaly);
   font-size: 0.875rem;
 }
+
+.presetsWrapper {
+  margin-bottom: 1.25rem;
+}
+
+.presetsLabel {
+  display: block;
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: var(--textMuted);
+  margin-bottom: 0.75rem;
+}
+
+.presetsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.presetCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text);
+}
+
+.presetCard:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accentDim);
+  transform: translateY(-2px);
+}
+
+.presetCardActive {
+  background: rgba(124, 158, 255, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(124, 158, 255, 0.15);
+}
+
+.presetIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.presetInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.presetName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.presetDesc {
+  font-size: 0.75rem;
+  color: var(--textMuted);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.presetMeta {
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-family: var(--fontMono);
+}
+
+.presetMeta code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.05rem 0.2rem;
+  border-radius: 4px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--textMuted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1.25rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.divider:not(:empty)::before {
+  margin-right: .75em;
+}
+
+.divider:not(:empty)::after {
+  margin-left: .75em;
+}

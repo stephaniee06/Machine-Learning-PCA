@@ -1,5 +1,7 @@
-// GANTI baris pertama dengan URL Render kamu yang sudah aktif
-const API_BASE = 'https://machine-learning-pca-backend.onrender.com/api';
+// Menggunakan API lokal jika dijalankan di localhost, atau API Render jika di production
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? '/api'
+  : 'https://machine-learning-pca-backend.onrender.com/api';
 
 /**
  * Upload CSV file to the backend on Render.

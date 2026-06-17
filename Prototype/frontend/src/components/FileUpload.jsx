@@ -2,22 +2,89 @@ import { useState } from 'react';
 import { uploadCsv } from '../api/client';
 import styles from './FileUpload.module.css';
 
+const PRESETS = [
+  {
+    id: 'clusters',
+    name: 'Simple Clusters',
+    description: '3D synthetic cluster points with a few distant outlier anomalies.',
+    filename: 'synthetic_clusters.csv',
+    labelColumn: 'is_anomaly',
+    icon: '📊'
+  },
+  {
+    id: 'cardio',
+    name: 'Cardio Metrics',
+    description: 'Patient health telemetry (HR, Blood Pressure, SpO2) showing cardiac anomalies.',
+    filename: 'cardio_metrics.csv',
+    labelColumn: 'label',
+    icon: '❤️'
+  },
+  {
+    id: 'server',
+    name: 'Server Metrics',
+    description: 'IT server node metrics (CPU, RAM, disk IO, net) with spikes & freeze anomalies.',
+    filename: 'server_metrics.csv',
+    labelColumn: 'status',
+    icon: '🖥️'
+  },
+  {
+    id: 'financial',
+    name: 'Financial Fraud',
+    description: 'Transactional speed, distance, and amount tracking credit card frauds.',
+    filename: 'financial_tx.csv',
+    labelColumn: 'is_fraud',
+    icon: '💳'
+  },
+  {
+    id: 'industrial',
+    name: 'Industrial Machinery',
+    description: 'Sensors tracking vibration, temp, speed, and pressure for bearing failures.',
+    filename: 'industrial_sensors.csv',
+    labelColumn: 'anomaly',
+    icon: '⚙️'
+  }
+];
+
 export default function FileUpload({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
   const [labelColumn, setLabelColumn] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
     setFile(f || null);
+    setSelectedPresetId(null);
     setError(null);
+  };
+
+  const handlePresetSelect = async (preset) => {
+    setLoading(true);
+    setError(null);
+    setSelectedPresetId(preset.id);
+    try {
+      const response = await fetch(`/presets/${preset.filename}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load preset: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const loadedFile = new File([blob], preset.filename, { type: 'text/csv' });
+      setFile(loadedFile);
+      setLabelColumn(preset.labelColumn);
+    } catch (err) {
+      setError(err.message || 'Failed to load preset dataset.');
+      setFile(null);
+      setSelectedPresetId(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      setError('Please select a CSV file.');
+      setError('Please select or upload a CSV file.');
       return;
     }
     setLoading(true);
@@ -38,7 +105,38 @@ export default function FileUpload({ onUploadSuccess }) {
 
   return (
     <section className={styles.section}>
-      <h2 className={styles.title}>1. Upload CSV</h2>
+      <h2 className={styles.title}>1. Select or Upload CSV Dataset</h2>
+      
+      <div className={styles.presetsWrapper}>
+        <span className={styles.presetsLabel}>Choose a sample dataset to test instantly:</span>
+        <div className={styles.presetsGrid}>
+          {PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`${styles.presetCard} ${
+                selectedPresetId === preset.id ? styles.presetCardActive : ''
+              }`}
+              onClick={() => handlePresetSelect(preset)}
+              disabled={loading}
+            >
+              <span className={styles.presetIcon}>{preset.icon}</span>
+              <div className={styles.presetInfo}>
+                <span className={styles.presetName}>{preset.name}</span>
+                <span className={styles.presetDesc}>{preset.description}</span>
+                <span className={styles.presetMeta}>
+                  Label: <code>{preset.labelColumn}</code>
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.divider}>
+        <span>or upload your own file</span>
+      </div>
+
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.row}>
           <div className={styles.fileCol}>
@@ -67,7 +165,7 @@ export default function FileUpload({ onUploadSuccess }) {
         </div>
         {error && <p className={styles.error}>{error}</p>}
         <button type="submit" disabled={loading} className={styles.button}>
-          {loading ? 'Uploading…' : 'Upload'}
+          {loading ? 'Processing…' : 'Upload & Load'}
         </button>
       </form>
     </section>
