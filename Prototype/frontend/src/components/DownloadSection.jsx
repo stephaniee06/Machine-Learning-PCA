@@ -40,18 +40,18 @@ export default function DownloadSection() {
         <button
           type="button"
           className={styles.btn}
-          onClick={handleCleaned}
-          disabled={loading != null}
-        >
-          {loading === 'cleaned' ? 'Downloading…' : 'Download cleaned CSV'}
-        </button>
-        <button
-          type="button"
-          className={styles.btnSecondary}
           onClick={handleAnomalies}
           disabled={loading != null}
         >
           {loading === 'anomalies' ? 'Downloading…' : 'Download anomalies CSV'}
+        </button>
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          onClick={handleCleaned}
+          disabled={loading != null}
+        >
+          {loading === 'cleaned' ? 'Downloading…' : 'Download cleaned CSV'}
         </button>
       </div>
       {error && <p className={styles.error}>{error}</p>}
