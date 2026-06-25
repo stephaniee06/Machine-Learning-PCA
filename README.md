@@ -1,160 +1,172 @@
-# PCA Anomaly Demo
+# Rethinking the Role of PCA
 
-Web app to upload a CSV, run PCA-based anomaly detection, view a 3D scatter of the first three principal components (normal vs anomaly), and see which rows are anomalies and which features contribute most.
+**It is a better anomaly detector than you might think.**
 
-## Stack
+Cross-domain research on PCA-based anomaly detection (Q-statistic / SPE), paired with **P.C.A. — Peculiarity Catching Agent**, an interactive web app that puts the same idea in practitioners' hands.
 
-- **Backend:** FastAPI
-- **Frontend:** React (Vite), HTML, CSS, JS, Three.js for 3D visualization
+---
 
-## Project structure
+## Overview
+
+Most ML workflows treat PCA as preprocessing — compress features, then hand off to a separate detector. This project argues that **PCA itself**, used via the **Q-statistic (squared reconstruction error)**, is a credible first-class anomaly detector: fast, interpretable, and competitive with classical baselines on real data.
+
+The repository has two independent parts:
+
+| Part | Location | Purpose |
+|------|----------|---------|
+| **Research experiment** | [`experiment/`](experiment/) | Reproducible Jupyter study across five benchmark domains |
+| **Web application** | [`backend/`](backend/) + [`frontend/`](frontend/) | Upload CSV → detect anomalies → explore in 3D |
+
+They share the same core idea (PCA reconstruction error) but serve different goals: **evidence** vs **demonstration**.
+
+```mermaid
+flowchart TB
+    subgraph Research["experiment/ — Research"]
+        NB["experiment.ipynb"]
+        DS["datasets/"]
+        OUT["outputs/"]
+        NB --> DS
+        NB --> OUT
+    end
+
+    subgraph App["Application — P.C.A."]
+        FE["React + Three.js<br/>frontend/"]
+        BE["FastAPI<br/>backend/"]
+        FE -->|"POST /api/upload<br/>POST /api/run"| BE
+        BE --> PCA["PCA Q-statistic<br/>+ feature explainer"]
+    end
+
+    Research -.->|"informs design"| App
+```
+
+---
+
+## Research experiment
+
+The standalone study lives in [`experiment/experiment.ipynb`](experiment/experiment.ipynb).
+
+### What it does
+
+- Compares **PCA (Q-statistic)** against **KNN**, **K-Means**, and **One-Class SVM** on five domains:
+  - Finance — Credit Card Fraud
+  - Healthcare — Thyroid (ann-thyroid)
+  - Industrial — Shuttle (Statlog)
+  - Cybersecurity — NSL-KDD
+  - Manufacturing — SECOM
+- Trains all detectors on **normal samples only**; labels are used for evaluation only.
+- Reports PR-AUC, ROC-AUC, F1, timing, and PCA-specific diagnostics (k/d ratio, Q-score histograms).
+- Explains *when* PCA wins or loses in terms of **data geometry** (Section 7).
+
+### Thesis (in one sentence)
+
+> PCA is a better anomaly detector than you might think **when anomalies violate a low-dimensional linear correlation structure** — not universally, but in more practically relevant domains than the "PCA is just preprocessing" narrative suggests.
+
+### Quick start
+
+**Requirements:** Python 3.11+
+
+```bash
+cd experiment
+pip install -r requirements.txt
+jupyter notebook experiment.ipynb
+```
+
+Run all cells top-to-bottom. Figures are written to `experiment/outputs/` (created automatically).
+
+### Data
+
+Benchmark CSVs ship under [`experiment/datasets/`](experiment/datasets/):
 
 ```
-Prototype/
+experiment/datasets/
+├── creditCard.csv
+├── thyroid.csv
+├── KDD.csv
+├── semiCom.csv
+└── statlog/
+    ├── shuttle.trn
+    └── shuttle.tst
+```
+
+The notebook resolves `DATA_DIR` to `datasets/` automatically. No absolute paths are printed at runtime.
+
+---
+
+## Web application — P.C.A.
+
+**Peculiarity Catching Agent** is a full-stack demo: upload a numeric CSV, run PCA-based anomaly detection, rotate a 3D scatter of the first principal components, and inspect per-row feature contributions.
+
+### Features
+
+- CSV upload with optional label column (0 = normal, 1 = anomaly)
+- Auto or manual PCA component count; configurable threshold percentile
+- Interactive **Three.js** 3D view (green = normal, red = anomaly)
+- Anomaly table with top contributing features per row
+- Download cleaned (normal-only) or anomaly-only CSV exports
+- Built-in sample presets (`frontend/public/presets/`)
+
+### Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | FastAPI, scikit-learn, pandas |
+| Frontend | React 18, Vite, Three.js |
+| Detection | PCA Q-statistic + per-feature residual explainer |
+
+### Project structure
+
+```
+.
+├── experiment/                 # Standalone research (notebook + datasets)
+│   ├── experiment.ipynb
+│   ├── requirements.txt
+│   └── datasets/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py           # FastAPI app
-│   │   ├── config.py         # Settings
+│   │   ├── main.py             # FastAPI entrypoint
+│   │   ├── config.py
 │   │   ├── api/
-│   │   │   ├── routes.py     # POST /api/upload, POST /api/run
-│   │   │   └── schemas.py    # Pydantic models
+│   │   │   ├── routes.py       # /api/upload, /api/run, downloads
+│   │   │   └── schemas.py
 │   │   └── services/
-│   │       ├── data_loader.py   # CSV load & validate
-│   │       ├── pca_anomaly.py   # PCA fit, reconstruction error, threshold
-│   │       └── explainer.py     # Per-row feature contributions
+│   │       ├── data_loader.py
+│   │       ├── pca_anomaly.py  # PCA fit, Q-score, threshold
+│   │       └── explainer.py    # Per-row feature contributions
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx
-│   │   ├── components/
-│   │   │   ├── FileUpload.jsx
-│   │   │   ├── RunControls.jsx
-│   │   │   ├── Scatter3D.jsx    # Three.js 3D scatter
-│   │   │   └── AnomalyTable.jsx
+│   │   ├── components/         # Upload, controls, 3D, table, downloads
 │   │   └── api/client.js
-│   ├── index.html
 │   └── package.json
-└── README.md
+└── scratch/
+    └── generate_presets.py     # Utility to regenerate demo CSV presets
 ```
 
-## Run the app (2 terminals)
+### Run locally
 
-You will run **two dev servers** at the same time:
+Use **two terminals** from the repository root.
 
-- **Terminal 1 (Backend)**: FastAPI on `http://localhost:8000` (Docs: `http://localhost:8000/docs`)
-- **Terminal 2 (Frontend)**: Vite on `http://localhost:5173`
-
-Pick the instructions for your OS below.
-
----
-
-## Run on Windows (PowerShell)
-
-### Terminal 1 — Backend
-
-```powershell
-cd "C:\Users\Alif Akbar Hafiz\Desktop\Perbinusan\4th Semester\A_MachineLearning\FinalProjectProposal\Prototype\backend"
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -U pip setuptools wheel
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-### Terminal 2 — Frontend
-
-```powershell
-cd "C:\Users\Alif Akbar Hafiz\Desktop\Perbinusan\4th Semester\A_MachineLearning\FinalProjectProposal\Prototype\frontend"
-npm install
-npm run dev
-```
-
-### Common Windows notes
-
-- If venv activation is blocked in PowerShell, run once:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-- If `pip install -r requirements.txt` fails building `numpy/pandas`, install **64-bit Python** (Python 3.11/3.12 recommended), delete `.venv`, then repeat the backend steps.
-
----
-
-## Run on macOS / Linux (Terminal)
-
-### Terminal 1 — Backend
-
-```bash
-cd "/path/to/Prototype/backend"
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -U pip setuptools wheel
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-### Terminal 2 — Frontend
-
-```bash
-cd "/path/to/Prototype/frontend"
-npm install
-npm run dev
-```
-
-If `python3 -m venv` fails on Linux, install venv support:
-
-```bash
-# Debian/Ubuntu
-sudo apt update
-sudo apt install -y python3-venv python3-pip
-```
-
----
-
-## Run on WSL (Windows Subsystem for Linux)
-
-### Terminal 1 (WSL) — Backend
-
-```bash
-cd /mnt/c/Users/Alif\ Akbar\ Hafiz/Desktop/Perbinusan/4th\ Semester/A_MachineLearning/FinalProjectProposal/Prototype/backend
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -U pip setuptools wheel
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Terminal 2 (WSL) — Frontend
-
-```bash
-cd /mnt/c/Users/Alif\ Akbar\ Hafiz/Desktop/Perbinusan/4th\ Semester/A_MachineLearning/FinalProjectProposal/Prototype/frontend
-npm install
-npm run dev
-```
-
-### WSL note (important)
-
-- If your distro is **WSL 1**, some Node installations (especially `nvm`) may refuse to run and show: “WSL 1 is not supported…”. The recommended fix is upgrading the distro to **WSL 2**:
-  - PowerShell: `wsl -l -v` (copy the distro name)
-  - PowerShell (Admin): `wsl --set-version <DistroName> 2`
-
----
-
-## Run locally (other environments)
-
-### Backend
+#### Terminal 1 — Backend
 
 ```bash
 cd backend
-python3 -m venv .venv
-source .venv/bin/activate   # WSL / Linux / macOS
-# .venv\Scripts\activate    # Windows PowerShell/cmd
+python -m venv .venv
+
+# Windows (PowerShell)
+.\.venv\Scripts\Activate.ps1
+
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -U pip setuptools wheel
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### Frontend
+API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+#### Terminal 2 — Frontend
 
 ```bash
 cd frontend
@@ -162,22 +174,88 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The dev server proxies `/api` to the backend.
+Open [http://localhost:5173](http://localhost:5173). Vite proxies `/api` to the backend.
 
-### Without proxy
+### Usage flow
 
-If you run the frontend on another port or host, set the backend URL in the frontend (e.g. in `src/api/client.js` use `http://127.0.0.1:8000/api` as base) and ensure CORS allows that origin in `backend/app/config.py`.
+1. **Upload** — Select a CSV with numeric feature columns. Optionally name a label column (`0` = normal, `1` = anomaly) so PCA fits on normal rows only.
+2. **Configure** — Set component count (or leave auto) and threshold percentile (default 95).
+3. **Run** — Detection executes; the 3D view and anomaly table populate.
+4. **Explore** — Drag to rotate, scroll to zoom. Click rows in the table for detail.
+5. **Export** — Download normal-only or anomaly-only CSVs.
 
-## Usage
+### API reference
 
-1. **Upload CSV** – Choose a CSV with numeric columns. Optionally specify a label column (0 = normal, 1 = anomaly); if provided, PCA is fitted on normal rows only.
-2. **Run** – Set number of components and threshold percentile, then click Run.
-3. **3D view** – Green = normal, red = anomaly in the space of the first three principal components. Drag to rotate, scroll to zoom.
-4. **Anomaly table** – Lists anomaly rows (or all rows via “Show all”), row index, reconstruction error, and top contributing features.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/upload` | Upload CSV (`multipart/form-data`: `file`, optional `label_column`, `encoding`) |
+| `POST` | `/api/run` | Run detection (`n_components`, `threshold_percentile`) |
+| `GET` | `/api/download/cleaned` | Export rows labelled normal |
+| `GET` | `/api/download/anomalies` | Export rows labelled anomalous |
 
-## API
+Interactive schema: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-- **POST /api/upload** – `multipart/form-data`: `file` (CSV), optional `label_column`, `encoding`. Returns `n_rows`, `n_features`, `feature_columns`, `label_column`.
-- **POST /api/run** – JSON body: `n_components`, `threshold_percentile`. Returns `points_3d`, `labels`, `reconstruction_errors`, `anomaly_details` (row index, error, top features), etc.
+---
 
-API docs: [http://localhost:8000/docs](http://localhost:8000/docs).
+## How the two parts connect
+
+| | Experiment notebook | Web app |
+|---|---------------------|---------|
+| **Goal** | Rigorous cross-domain comparison | Interactive exploration of one dataset at a time |
+| **Methods** | PCA, KNN, K-Means, OC-SVM | PCA Q-statistic only |
+| **Output** | Metrics, plots, geometric analysis | 3D viz, row-level explanations, CSV export |
+| **Audience** | Research / report writing | Demo, teaching, quick prototyping |
+
+The app implements the same Q-statistic logic validated in the notebook, extended with a **feature contribution explainer** for interpretability in the UI.
+
+---
+
+## Requirements
+
+This repo uses **separate dependency files** per part — do not merge them into one root `requirements.txt`, because the notebook and the API server need different packages.
+
+| Part | File | Install |
+|------|------|---------|
+| Experiment | [`experiment/requirements.txt`](experiment/requirements.txt) | `pip install -r experiment/requirements.txt` |
+| Backend | [`backend/requirements.txt`](backend/requirements.txt) | `pip install -r backend/requirements.txt` |
+| Frontend | [`frontend/package.json`](frontend/package.json) | `npm install` (inside `frontend/`) |
+
+Shared ML libraries (`numpy`, `pandas`, `scikit-learn`) are pinned to the same versions in both Python files where possible.
+
+- Python **3.11+** recommended for the backend
+- Node.js **18+** for the frontend
+
+---
+
+## Development notes
+
+- **CORS:** The backend allows all origins in development (`backend/app/main.py`). Restrict `allow_origins` before production deployment.
+- **In-memory state:** Uploaded CSVs are held in memory on the server between `/upload` and `/run`. Restarting the backend clears session data.
+- **Presets:** Run `python scratch/generate_presets.py` to regenerate demo CSVs in `frontend/public/presets/`.
+- **Large datasets:** Credit Card and NSL-KDD are included for the experiment; the web app enforces an upload size limit (see `backend/app/config.py`).
+
+---
+
+## Dataset acknowledgements
+
+| Dataset | Source |
+|---------|--------|
+| Credit Card Fraud | [Kaggle ULB / Dal Pozzolo et al.](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) |
+| Thyroid (ann-thyroid) | [UCI ML Repository](https://archive.ics.uci.edu/dataset/102/thyroid+disease) |
+| Shuttle (Statlog) | [UCI ML Repository](https://archive.ics.uci.edu/dataset/148/statlog+shuttle) |
+| NSL-KDD | [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/nsl.html) |
+| SECOM | [UCI ML Repository](https://archive.ics.uci.edu/dataset/179/secom) |
+
+Use these datasets in accordance with their respective licenses and citation requirements.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+<p align="center">
+  <sub>PCA is not just preprocessing — sometimes it <em>is</em> the detector.</sub>
+</p>
