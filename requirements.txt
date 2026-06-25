@@ -1,0 +1,15 @@
+# experiment/experiment.ipynb — research notebook dependencies
+# Install: pip install -r requirements.txt
+
+numpy==1.26.4
+pandas==2.2.0
+matplotlib==3.8.3
+seaborn==0.13.2
+scipy==1.12.0
+scikit-learn==1.4.0
+tqdm==4.66.2
+jupyter==1.0.0
+ipykernel==6.29.3
+
+# Optional — only needed if fetching datasets from UCI at runtime
+# ucimlrepo
