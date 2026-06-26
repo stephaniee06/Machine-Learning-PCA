@@ -27,5 +27,3 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-*.csv
-experiment/datasets/
